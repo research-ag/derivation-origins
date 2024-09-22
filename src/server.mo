@@ -10,30 +10,19 @@ shared ({ caller = creator }) actor class () {
   type HttpResponse = Server.HttpResponse;
   type ResponseClass = Server.ResponseClass;
 
-  stable var serializedEntries : Server.SerializedEntries = ([], [], [creator]);
   stable var urls = Array.init<Text>(10, "");
 
   public shared (msg) func set(i : Nat, t : Text) {
     if (msg.caller != creator) Debug.trap("not allowed");
     urls[i] := t;
-    server.get(
-      "/.well-known/ii-alternative-origins",
-      func(_ : Request, res : ResponseClass) : async Response {
-        res.json({
-          status_code = 200;
-          // headers = [("Content-Type", "text/plain")];
-          body = json();
-          cache_strategy = #default;
-          // streaming_strategy = null;
-        });
-      },
-    );
+    server.empty_cache();
   };
 
   public query func get() : async [Text] {
     Array.freeze(urls);
   };
 
+  let serializedEntries : Server.SerializedEntries = ([], [], [creator]);
   let server = Server.Server({ serializedEntries });
 
   let json = func() : Text {
@@ -72,6 +61,7 @@ shared ({ caller = creator }) actor class () {
     await server.http_request_update(req);
   };
 
+  /*
   public func invalidate_cache() : async () {
     server.empty_cache();
   };
@@ -79,6 +69,7 @@ shared ({ caller = creator }) actor class () {
   system func preupgrade() {
     serializedEntries := server.entries();
   };
+  */
 
   system func postupgrade() {
     ignore server.cache.pruneAll();
